@@ -10,5 +10,5 @@ The code has been explicitly designed for shortness, compactness and simplicity,
 * *parallel*: with MPI 
 * *elegant*: data transposition with MPI interleaved datatypes
 * *validated*: based on the engine developed by  [Luchini & Quadrio, J. Comp. Phys. (2006)](https://www.sciencedirect.com/science/article/pii/S0021999105002871?via%3Dihub)
-* *low-cost*: optimized for performing DNS off-the-shelf hardware
+* *low-cost*: optimized for performing DNS on off-the-shelf hardware
 
