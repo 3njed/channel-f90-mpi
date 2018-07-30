@@ -1,0 +1,19 @@
+function Vplane = getVelocityPlane(field,IY,dns)
+
+Vplane=zeros(2*dns.nz+1,dns.nx+1,3);
+
+for iV=1:3
+  for IX=0:dns.nx; ix=IX+1;
+      for IZ=-dns.nz:dns.nz; iz=IZ+dns.nz+1;
+          fseek(field.f, ... 
+                4*3+8*7+1 +8*2*( ...
+                +(iV-1)*((dns.ny+3)*(2*dns.nz+1)*(dns.nx+1)) ...
+                +(IX)*((dns.ny+3)*(2*dns.nz+1)) ...
+                +(IZ+dns.nz)*((dns.ny+3)) ...
+                +(IY+1)...
+                ),'bof');
+          tmp=fread(field.f,2,'double'); Vplane(iz,ix,iV)=complex(tmp(1),tmp(2));
+      end
+  end
+end
+

@@ -58,6 +58,8 @@ MODULE dnsdata
   !Outstats
   real(C_DOUBLE) :: cfl=0.0d0
   integer(C_SIZE_T) :: istep,nstep,ifield
+  !Restart file
+  character(len=40) :: fname
 
   CONTAINS
 
@@ -82,10 +84,10 @@ MODULE dnsdata
 
   !--------------------------------------------------------------!
   !---------------- Allocate memory for solution ----------------!
-  SUBROUTINE init_memory()
+  SUBROUTINE init_memory(solveNS)
     INTEGER(C_INT) :: ix,iz
     ALLOCATE(V(-1:ny+1,-nz:nz,nx0:nxN,1:3))
-    ALLOCATE(memrhs(0:2,-nz:nz,nx0:nxN),oldrhs(1:ny-1,-nz:nz,nx0:nxN),bc0(-nz:nz,nx0:nxN),bcn(-nz:nz,nx0:nxN))
+    IF (solveNS) ALLOCATE(memrhs(0:2,-nz:nz,nx0:nxN),oldrhs(1:ny-1,-nz:nz,nx0:nxN),bc0(-nz:nz,nx0:nxN),bcn(-nz:nz,nx0:nxN))
 #define newrhs(iy,iz,ix) memrhs(MOD(iy+1000,3),iz,ix)
 #define imod(iy) MOD(iy+1000,5)
     ALLOCATE(der(1:ny-1),d0mat(1:ny-1,-2:2),etamat(1:ny-1,-2:2),D2vmat(1:ny-1,-2:2),y(-1:ny+1),dy(1:ny-1))
@@ -101,7 +103,8 @@ MODULE dnsdata
   !--------------------------------------------------------------!
   !--------------- Deallocate memory for solution ---------------!
   SUBROUTINE free_memory()
-    DEALLOCATE(V,memrhs,oldrhs,der,bc0,bcn,d0mat,etamat,D2vmat,y,dy)
+    DEALLOCATE(V,der,d0mat,etamat,D2vmat,y,dy)
+    IF (solveNS) DEALLOCATE(memrhs,oldrhs,bc0,bcn)
     IF (has_terminal) CLOSE(UNIT=101)
   END SUBROUTINE free_memory
 
@@ -366,10 +369,11 @@ MODULE dnsdata
 
   !--------------------------------------------------------------!
   !-------------------- read_restart_file -----------------------! 
-  SUBROUTINE read_restart_file()
+  SUBROUTINE read_restart_file(filename)
+    character(len=40), intent(IN) :: filename
     integer(C_SIZE_T) :: iV,ix,iy,iz,io,nxB_t,nx_t,nz_t,ny_t,iproc_t,br=8,bc=16,iV_t,b1=1,b7=7,b3=3
     integer(C_SIZE_T) :: pos
-    OPEN(UNIT=100,FILE="Dati.cart.out",access="stream",status="old",action="read",iostat=io)
+    OPEN(UNIT=100,FILE=TRIM(filename),access="stream",status="old",action="read",iostat=io)
     nx_t=nx+1; ny_t=ny+3; nz_t=2*nz+1; iproc_t=iproc; nxB_t=nxB
     IF (io==0) THEN
       IF (has_terminal) WRITE(*,*) "Reading restart file..."

@@ -33,13 +33,13 @@ PROGRAM channel
   CALL MPI_COMM_SIZE(MPI_COMM_WORLD,nproc,ierr)
   CALL read_dnsin()
   CALL init_MPI(iproc,nproc,nx+1,nz,ny,nxd+1,nzd,nx0,nxN,nxB,nz0,nzN,nzB,block)
-  CALL init_memory()
+  CALL init_memory(.TRUE.) 
 
   ! Init various subroutines
   CALL init_fft(VVdz,VVdx,rVVdx,nxd,nxB,nzd,nzB)
   CALL setup_derivatives()
   CALL setup_boundary_conditions()
-  CALL read_restart_file()
+  fname="Dati.cart.out";       CALL read_restart_file(fname)
   IF (.NOT. time_from_restart) CALL read_dnsin() 
 
   ! Allocate memory for stats
@@ -128,7 +128,7 @@ END IF
   IF (has_terminal) CLOSE(102)
   ! Realease memory
   CALL free_fft()
-  CALL free_memory()
+  CALL free_memory(.TRUE.) 
   CALL MPI_Finalize()
 
 
