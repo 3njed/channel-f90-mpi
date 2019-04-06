@@ -86,6 +86,7 @@ MODULE dnsdata
   !---------------- Allocate memory for solution ----------------!
   SUBROUTINE init_memory(solveNS)
     INTEGER(C_INT) :: ix,iz
+    logical(C_BOOL), intent(IN) :: solveNS
     ALLOCATE(V(-1:ny+1,-nz:nz,nx0:nxN,1:3))
     IF (solveNS) ALLOCATE(memrhs(0:2,-nz:nz,nx0:nxN),oldrhs(1:ny-1,-nz:nz,nx0:nxN),bc0(-nz:nz,nx0:nxN),bcn(-nz:nz,nx0:nxN))
 #define newrhs(iy,iz,ix) memrhs(MOD(iy+1000,3),iz,ix)
@@ -102,7 +103,8 @@ MODULE dnsdata
 
   !--------------------------------------------------------------!
   !--------------- Deallocate memory for solution ---------------!
-  SUBROUTINE free_memory()
+  SUBROUTINE free_memory(solveNS)
+    LOGICAL(C_BOOL), intent(IN) :: solveNS
     DEALLOCATE(V,der,d0mat,etamat,D2vmat,y,dy)
     IF (solveNS) DEALLOCATE(memrhs,oldrhs,bc0,bcn)
     IF (has_terminal) CLOSE(UNIT=101)
@@ -270,7 +272,7 @@ MODULE dnsdata
             ucor(0)=-sum(ucor(1:3)*eta0bc(0:2))/eta0bc(-1)
             ucor(-1)=-sum(ucor(0:3)*eta0m1bc(-1:2))/eta0m1bc(-2)
             ucor(ny)=-sum(ucor(ny-3:ny-1)*etanbc(-2:0))/etanbc(1)
-            ucor(ny+1)=-sum(ucor(ny-3:ny)*etanp1bc(-2:1))/etanp1bc(2)          
+            ucor(ny+1)=-sum(ucor(ny-3:ny)*etanp1bc(-2:1))/etanp1bc(2)  
             IF (abs(meanflowx)>1.0d-7) THEN
               corrpx = (meanflowx-yintegr(dreal(V(:,0,0,1))))/yintegr(ucor)
               V(:,0,0,1)=dcmplx(dreal(V(:,0,0,1))+corrpx*ucor,dimag(V(:,0,0,1)))
@@ -373,15 +375,16 @@ MODULE dnsdata
     character(len=40), intent(IN) :: filename
     integer(C_SIZE_T) :: iV,ix,iy,iz,io,nxB_t,nx_t,nz_t,ny_t,iproc_t,br=8,bc=16,iV_t,b1=1,b7=7,b3=3
     integer(C_SIZE_T) :: pos
+    real(C_DOUBLE) :: rn(1:3)
     OPEN(UNIT=100,FILE=TRIM(filename),access="stream",status="old",action="read",iostat=io)
     nx_t=nx+1; ny_t=ny+3; nz_t=2*nz+1; iproc_t=iproc; nxB_t=nxB
     IF (io==0) THEN
       IF (has_terminal) WRITE(*,*) "Reading restart file..."
-      READ(100,POS=1) nx,ny,nz,alfa0,beta0,ni,a,ymin,ymax,time
-      WRITE(*,*) nx,ny,nz,alfa0,beta0,ni,a
+      !READ(100,POS=1) nx,ny,nz,alfa0,beta0,ni,a,ymin,ymax,time
+      !WRITE(*,*) nx,ny,nz,alfa0,beta0,ni,a
       DO iV=1,3
         pos=bc*ny_t*nz_t*nxB_t*iproc_t+(iV-b1)*(bc*ny_t*nz_t*nx_t)+b1+(br*b7+b3*SIZEOF(nx))
-        WRITE(*,*) pos,iproc
+        !WRITE(*,*) pos,iproc
         READ(100,POS=pos) V(:,:,:,iV)
       END DO
       CLOSE(100)
@@ -389,7 +392,12 @@ MODULE dnsdata
       V=0
       IF (has_terminal) WRITE(*,*) "Generating initial field..."
       DO iy=-1,ny+1; DO ix=nx0,nxN; DO iz=-nz,nz
+#ifdef __GNUC__
           V(iy,iz,ix,1) = 0.0001*EXP(dcmplx(0,RAND()-0.5));  V(iy,iz,ix,2) = 0.0001*EXP(dcmplx(0,RAND()-0.5));  V(iy,iz,ix,3) = 0.0001*EXP(dcmplx(0,RAND()-0.5));
+#else
+          CALL RANDOM_NUMBER(rn)
+          V(iy,iz,ix,1) = 0.0001*EXP(dcmplx(0,rn(1)-0.5));  V(iy,iz,ix,2) = 0.0001*EXP(dcmplx(0,rn(2)-0.5));  V(iy,iz,ix,3) = 0.0001*EXP(dcmplx(0,rn(3)-0.5));
+#endif
       END DO;        END DO;        END DO
       IF (has_terminal) THEN
         DO CONCURRENT (iy=-1:ny+1)
